@@ -1292,6 +1292,14 @@ function renderNMSTop(){
   const fall=REGISTROS.filter(r=>r.situacao==='Modo Local').length;
   const inst=REGISTROS.filter(r=>r.situacao==='Instável').length;
   const total=TOTAL_MONITORADO;
+  // MTTR — tempo médio de resolução
+  const resolvidos=REGISTROS.filter(r=>r.situacao==='Operacional'&&r.conclusao);
+  const tmed=resolvidos.length?Math.round(resolvidos.reduce((s,r)=>{
+    const d=r.conclusao&&r.inicio?Math.floor((new Date(r.conclusao+'T00:00:00')-new Date(r.inicio+'T00:00:00'))/86400000):0;
+    return s+d;
+  },0)/resolvidos.length):null;
+  const mttrColor=tmed===null?'var(--text3)':tmed<=7?'#34d399':tmed<=14?'#fbbf24':'#f87171';
+  const mttrLabel=tmed===null?'—':tmed+'d';
   // Modo Local NEUTRO — sinaliza mas NÃO subtrai
   const operando=Math.max(0, total - inop - parc - inst);
   const pctOp=total?Math.round(operando/total*100):0;
@@ -1336,6 +1344,12 @@ function renderNMSTop(){
       <div class="nms-val purple">${fall}</div>
       <div class="nms-sub">modo local — operando</div>
       <div class="nms-pct-bar"><div class="nms-pct-fill" style="width:${total?Math.round(fall/total*100):0}%;background:#a78bfa"></div></div>
+    </div>
+    <div class="nms-card" onclick="showPage('relatorio')" title="Tempo médio de resolução — média dos encerrados">
+      <div class="nms-label">MTTR</div>
+      <div class="nms-val" style="color:${mttrColor}">${mttrLabel}</div>
+      <div class="nms-sub">tempo médio resolução</div>
+      <div class="nms-pct-bar"><div class="nms-pct-fill" style="width:${tmed?Math.min(100,Math.round(tmed/30*100)):0}%;background:${mttrColor}"></div></div>
     </div>
     <div class="gauge-card">
       <div class="gauge-wrap">
@@ -1986,10 +2000,63 @@ function renderRelatorio(){
     ${(()=>{ const counts={}; base.filter(r=>r.situacao!=='Operacional').forEach(r=>{ if(r.motivo) counts[r.motivo]=(counts[r.motivo]||0)+1; }); const sorted=Object.entries(counts).sort((a,b)=>b[1]-a[1]); const max=sorted.length?sorted[0][1]:1; return sorted.map(([m,c])=>`<div style="display:flex;align-items:center;gap:8px;margin-bottom:6px"><span style="font-size:11px;color:var(--text2);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${m}</span><div style="width:120px;height:5px;background:var(--border);border-radius:3px;overflow:hidden;flex-shrink:0"><div style="height:100%;width:${Math.round(c/max*100)}%;background:var(--accent2);border-radius:3px"></div></div><span style="font-family:var(--mono);font-size:11px;color:var(--text2);min-width:18px;text-align:right">${c}</span></div>`).join('')||'<div style="color:var(--text3);font-size:11px">Nenhuma falha no período.</div>'; })()}
   </div>`;
 
+  // ── SEÇÃO POR RISP ──
+  const ordemSit3={'Inoperante':0,'Parcial/Em análise':1,'Instável':2,'Modo Local':3};
+  const secPorRisp=`<div class="report-card">
+    <div style="font-size:12px;font-weight:600;margin-bottom:4px">Ocorrências por RISP</div>
+    <div style="font-size:11px;color:var(--text3);margin-bottom:14px">Organizado por regional (RISP 1 → 15) · subdivisão por situação</div>
+    ${sortRisps(RISPS).map(risp=>{
+      const regProb=base.filter(r=>{ const s=getSite(r.sbs); return s&&s.risp===risp&&r.situacao!=='Operacional'; })
+        .sort((a,b)=>{ const oa=ordemSit3[a.situacao]??9,ob=ordemSit3[b.situacao]??9; return oa!==ob?oa-ob:diffDays(b.inicio)-diffDays(a.inicio); });
+      const regRes=base.filter(r=>{ const s=getSite(r.sbs); return s&&s.risp===risp&&r.situacao==='Operacional'&&r.conclusao; })
+        .sort((a,b)=>new Date(b.conclusao)-new Date(a.conclusao));
+      if(!regProb.length&&!regRes.length) return `<div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--border)"><span style="font-size:10px;font-family:var(--mono);color:var(--text3);min-width:60px">${risp}</span><span style="font-size:10px;color:#34d399">✓ Sem ocorrências no período</span></div>`;
+      const sitColors={Inoperante:'#f87171','Parcial/Em análise':'#fbbf24',Instável:'#fb923c','Modo Local':'#a78bfa'};
+      return `<div style="margin-bottom:12px;border:1px solid var(--border);border-radius:8px;overflow:hidden">
+        <div style="background:var(--surface2);padding:8px 12px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--border)">
+          <span style="font-size:11px;font-weight:700;color:var(--text)">${risp}</span>
+          <div style="display:flex;gap:10px">
+            ${regProb.length?`<span style="font-size:9px;font-family:var(--mono);color:#f87171">${regProb.length} em aberto</span>`:''}
+            ${regRes.length?`<span style="font-size:9px;font-family:var(--mono);color:#34d399">${regRes.length} resolvida(s)</span>`:''}
+          </div>
+        </div>
+        <div style="padding:8px 12px">
+          ${['Inoperante','Parcial/Em análise','Instável','Modo Local'].map(sit=>{
+            const rows=regProb.filter(r=>r.situacao===sit);
+            if(!rows.length) return '';
+            const c=sitColors[sit];
+            return `<div style="margin-bottom:10px">
+              <div style="font-size:9px;font-family:var(--mono);color:${c};text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid var(--border)">${sit} — ${rows.length} site(s)</div>
+              ${rows.map(r=>{ const s=getSite(r.sbs)||{nome:'SBS '+r.sbs}; const d=diffDays(r.inicio); const dc=d>30?'var(--red)':d>7?'#fb923c':'var(--text3)';
+                return `<div class="stat-row">
+                  <span class="stat-label">
+                    <b style="color:var(--text)">${s.nome}</b>${r.glpi?` <span style="font-size:9px;color:var(--accent2)">${r.glpi}</span>`:''}
+                    <br><span style="font-size:10px;color:var(--text3)">${r.motivo}</span>
+                    ${r.acao?`<br><span style="font-size:10px;color:var(--text2)">${truncate(r.acao,70)}</span>`:''}
+                  </span>
+                  <span style="font-size:10px;color:var(--text3);min-width:70px;text-align:right">${r.prazo||'s/ prazo'}</span>
+                  <span class="stat-val" style="color:${dc}">${d}d</span>
+                </div>`; }).join('')}
+            </div>`;
+          }).join('')}
+          ${regRes.length?`<div style="margin-top:6px">
+            <div style="font-size:9px;font-family:var(--mono);color:#34d399;text-transform:uppercase;letter-spacing:.08em;margin-bottom:5px;padding-bottom:3px;border-bottom:1px solid var(--border)">Resolvidas — ${regRes.length}</div>
+            ${regRes.map(r=>{ const s=getSite(r.sbs)||{nome:'SBS '+r.sbs}; const dias=r.conclusao&&r.inicio?Math.floor((new Date(r.conclusao+'T00:00:00')-new Date(r.inicio+'T00:00:00'))/86400000):0;
+              return `<div class="stat-row">
+                <span class="stat-label"><b style="color:var(--text)">${s.nome}</b>${r.glpi?` <span style="font-size:9px;color:var(--accent2)">${r.glpi}</span>`:''}<br><span style="font-size:10px;color:var(--text3)">${r.motivo}</span></span>
+                <span style="font-size:10px;color:var(--text3);text-align:right;min-width:110px">${fmtDate(r.inicio)} → ${fmtDate(r.conclusao)}</span>
+                <span class="stat-val" style="color:#34d399">${dias}d</span>
+              </div>`; }).join('')}
+          </div>`:''}
+        </div>
+      </div>`;
+    }).join('')}
+  </div>`;
+
   let html='';
-  if(relTipo==='geral')      html=sumario+secProblemas+secResolvidos+secMetricas;
-  if(relTipo==='problemas')  html=sumario+secProblemas;
-  if(relTipo==='resolvidos') html=sumario+secResolvidos;
+  if(relTipo==='geral')      html=sumario+secPorRisp+secProblemas+secResolvidos+secMetricas;
+  if(relTipo==='problemas')  html=sumario+secPorRisp+secProblemas;
+  if(relTipo==='resolvidos') html=sumario+secPorRisp+secResolvidos;
   if(relTipo==='metricas')   html=sumario+secMetricas;
   document.getElementById('relatorio-content').innerHTML=html;
 }
