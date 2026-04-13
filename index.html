@@ -366,11 +366,13 @@ td{padding:9px 12px;vertical-align:middle}
 .risp-row .rr-name{font-weight:500;font-size:12px;flex:1}
 .risp-row .rr-count{font-family:var(--mono);font-size:10px;color:var(--text3)}
 .risp-row .rr-actions{display:flex;gap:4px}
-.site-manage-table{width:100%;border-collapse:collapse;font-size:12px}
-.site-manage-table th{padding:8px 10px;text-align:left;font-size:10px;font-family:var(--mono);color:var(--text3);background:var(--surface2);border-bottom:1px solid var(--border);text-transform:uppercase;letter-spacing:.06em}
-.site-manage-table td{padding:7px 10px;border-bottom:1px solid var(--border);color:var(--text2)}
+.site-manage-table{width:100%;border-collapse:collapse;font-size:14px}
+.site-manage-table th{padding:12px 14px;text-align:left;font-size:11px;font-family:var(--mono);color:#7dd3fc;background:#0f2035;border-bottom:2px solid #1e3a5f;text-transform:uppercase;letter-spacing:.07em;white-space:nowrap}
+.site-manage-table td{padding:12px 14px;border-bottom:1px solid #1a2e45;color:#e2e8f0;font-size:13px;line-height:1.4}
+.site-manage-table tbody tr:nth-child(even) td{background:#0d1f33}
+.site-manage-table tbody tr:nth-child(odd) td{background:#0a1929}
 .site-manage-table tr:last-child td{border-bottom:none}
-.site-manage-table tr:hover td{background:var(--surface2);color:var(--text)}
+.site-manage-table tr:hover td{background:#162d47!important;color:#f0f9ff}
 .import-zone{border:2px dashed var(--border2);border-radius:8px;padding:28px;text-align:center;cursor:pointer;transition:border-color .15s}
 .import-zone:hover{border-color:var(--accent)}
 .import-zone input[type=file]{display:none}
@@ -851,6 +853,7 @@ body.nivel-operador  .perm-admin { display:none!important }
           <div style="flex:1"><label class="form-label">Latitude</label><input class="form-input" id="ns-lat" placeholder="Ex: -15.6335" type="text"></div>
           <div style="flex:1"><label class="form-label">Longitude</label><input class="form-input" id="ns-lon" placeholder="Ex: -56.0922" type="text"></div>
         </div>
+        <div class="perm-admin"><label class="form-label">Registro de Patrimônio <span style="color:#f59e0b;font-size:9px">🔒 Admin</span></label><input class="form-input" id="ns-patrimonio" placeholder="Ex: PT-2024-0001" type="text"></div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn btn-primary" id="site-submit-btn" onclick="submitSite()">+ Cadastrar site</button>
@@ -866,9 +869,9 @@ body.nivel-operador  .perm-admin { display:none!important }
       <div><div class="manage-card-title">Sites cadastrados (<span id="base-count-gerenciar">0</span>)</div></div>
       <input class="search-input" type="text" placeholder="Buscar..." oninput="renderGerenciarTable(this.value)" style="width:180px">
     </div>
-    <div style="overflow-x:auto;max-height:320px;overflow-y:auto">
+    <div style="overflow-x:auto;max-height:520px;overflow-y:auto;border-radius:8px;border:1px solid #1e3a5f">
       <table class="site-manage-table"><thead><tr>
-        <th>SBS</th><th>Nome</th><th>Cidade</th><th>RISP</th><th>CR</th><th>Tráfego</th><th>Prop.</th><th>Coords</th><th></th>
+        <th>SBS</th><th>Nome</th><th>Cidade</th><th>RISP</th><th>CR</th><th>Tráfego</th><th>Prop.</th><th class="perm-admin">Patrimônio</th><th>Coords</th><th></th>
       </tr></thead><tbody id="tbody-gerenciar"></tbody></table>
     </div>
   </div>
@@ -2383,9 +2386,18 @@ function renderGerenciarTable(q){
     const coordLabel=hasCoords
       ? `<span style="font-size:9px;font-family:var(--mono);color:#34d399" title="${coords.lat}, ${coords.lon}">✓ coord</span>`
       : `<span style="font-size:9px;font-family:var(--mono);color:var(--text3)">— sem coord</span>`;
+    const patrimonioCell=s.patrimonio
+      ? `<span style="font-family:var(--mono);font-size:12px;color:#fbbf24;background:rgba(251,191,36,.1);padding:2px 7px;border-radius:4px;border:1px solid rgba(251,191,36,.3)">${s.patrimonio}</span>`
+      : `<span style="color:#4a6080;font-size:11px">—</span>`;
     return `<tr id="site-row-${s.sbs}">
-      <td class="td-mono">${s.sbs}</td><td>${s.nome}</td><td>${s.cidade}</td>
-      <td><span class="risp-pill">${s.risp}</span></td><td>${s.cr}</td><td>${s.trafego}</td><td>${s.prop}</td>
+      <td style="font-family:var(--mono);font-weight:700;color:#7dd3fc">${s.sbs}</td>
+      <td style="font-weight:500;color:#f0f9ff">${s.nome}</td>
+      <td>${s.cidade}</td>
+      <td><span class="risp-pill" style="font-size:11px;padding:3px 8px">${s.risp}</span></td>
+      <td style="color:#94a3b8">${s.cr}</td>
+      <td><span style="font-size:11px;padding:2px 7px;border-radius:4px;background:rgba(99,102,241,.15);color:#a5b4fc;border:1px solid rgba(99,102,241,.25)">${s.trafego}</span></td>
+      <td style="color:#94a3b8">${s.prop}</td>
+      <td class="perm-admin" style="text-align:center">${patrimonioCell}</td>
       <td style="text-align:center">${coordLabel}</td>
       <td style="white-space:nowrap">
         <button class="btn-action perm-admin" onclick="editSite(${s.sbs})" title="Editar site">✎ editar</button>
@@ -2404,7 +2416,7 @@ function _parseCoordsField(val){
 }
 
 function _clearSiteForm(){
-  ['ns-sbs','ns-nome','ns-cidade','ns-cr','ns-lat','ns-lon'].forEach(id=>{
+  ['ns-sbs','ns-nome','ns-cidade','ns-cr','ns-lat','ns-lon','ns-patrimonio'].forEach(id=>{
     const el=document.getElementById(id); if(el) el.value='';
   });
   const fb=document.getElementById('add-site-feedback');
@@ -2443,6 +2455,7 @@ function editSite(sbs){
   document.getElementById('ns-cr').value=s.cr||'';
   document.getElementById('ns-trafego').value=s.trafego||'BT';
   document.getElementById('ns-prop').value=s.prop||'SESP';
+  const patEl=document.getElementById('ns-patrimonio'); if(patEl) patEl.value=s.patrimonio||'';
   // RISP
   const rispSel=document.getElementById('ns-risp');
   if(rispSel) rispSel.value=s.risp;
@@ -2477,6 +2490,8 @@ function submitSite(){
   const lonVal=document.getElementById('ns-lon').value.trim();
   const lat=_parseCoordsField(latVal);
   const lon=_parseCoordsField(lonVal);
+  const patrimonioEl=document.getElementById('ns-patrimonio');
+  const patrimonio=patrimonioEl?patrimonioEl.value.trim():'';
   const fb=document.getElementById('add-site-feedback');
 
   if(!sbs||!nomeRaw||!cidade){ fb.textContent='Preencha SBS, Nome e Cidade.'; fb.style.color='#f87171'; return; }
@@ -2491,7 +2506,7 @@ function submitSite(){
   const nomeFormatado=`${sbs} – ${nomeRaw}`;
   const sbsStr=String(sbs);
 
-  const siteData={sbs,nome:nomeFormatado,cidade,risp,cr,trafego,prop};
+  const siteData={sbs,nome:nomeFormatado,cidade,risp,cr,trafego,prop,...(patrimonio?{patrimonio}:{patrimonio:''}) };
   if(_editingSBS!==null){
     // ── MODO EDIÇÃO ──
     if(lat!==null&&lon!==null) ERB_COORDS[sbsStr]={...(ERB_COORDS[sbsStr]||{}),lat,lon};
