@@ -2352,7 +2352,7 @@ ${_secResolvidos}
     +'} else if(type==="bar"){var horiz=chart.options.indexAxis==="y";'
     +'if(horiz){ctx.font="bold 9px sans-serif";ctx.fillStyle="#1e40af";ctx.textAlign="left";ctx.textBaseline="middle";ctx.fillText(v,el.x+4,el.y);}'
     +'else{var h=Math.abs(el.y-el.base);if(h>12){ctx.font="bold 8px sans-serif";ctx.fillStyle="#fff";ctx.textAlign="center";ctx.textBaseline="middle";ctx.fillText(v,el.x,(el.y+el.base)/2);}}'
-    +'}ctx.restore();});});}};
+    +'}ctx.restore();});});}};'
     +'var D=window.__D;'
     +'if(!D||typeof Chart==="undefined")return;'
     +'new Chart(document.getElementById("c-status"),{type:"doughnut",plugins:[_dl],data:{labels:["Operando","Inoperante","Parcial","Modo Local","Inst\\u00e1vel"],datasets:[{data:[D.op,D.inopCnt,D.parcCnt,D.mlCnt,D.instCnt],backgroundColor:["#22c55e","#ef4444","#fbbf24","#a78bfa","#fb923c"],borderWidth:2,borderColor:"#fff"}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:"bottom",labels:{font:{size:9},boxWidth:10,padding:5}}}}});'
