@@ -2105,6 +2105,72 @@ function gerarPDF(){
     })),
   };
   const _dj = JSON.stringify(_chartData).replace(/`/g,'\\u0060').replace(/\$/g,'\\u0024');
+    // ── Pre-build summary tables (avoid deep template nesting) ──
+    const _motivosHTML=(()=>{
+      const ents=Object.entries(_tfMap).sort((a,b)=>b[1]-a[1]);
+      if(!ents.length) return '';
+      const tot=ents.reduce((s,[,v])=>s+v,0)||1;
+      const mx=ents[0][1]||1;
+      let rows='';
+      ents.forEach(([m,c],i)=>{
+        const pct=Math.round(c/tot*100);
+        const bw=Math.round(c/mx*100);
+        rows+='<tr>'
+          +'<td style="color:#9ca3af;font-weight:700">'+(i+1)+'</td>'
+          +'<td><strong>'+m+'</strong></td>'
+          +'<td style="text-align:center;font-weight:700;color:#0f2044;font-size:11px">'+c+'</td>'
+          +'<td style="text-align:center"><span style="color:#1a6fd4;font-weight:700;font-size:10px">'+pct+'%</span></td>'
+          +'<td style="padding:5px 7px"><div style="background:#e5e7eb;border-radius:3px;height:10px;overflow:hidden"><div style="background:#1a6fd4;height:100%;width:'+bw+'%;border-radius:3px;min-width:4px"></div></div></td>'
+          +'</tr>';
+      });
+      const totalN=ents.reduce((s,[,v])=>s+v,0);
+      return '<div class="section">'
+        +'<div class="section-title">Resumo — Ocorrências por Motivo de Falha <span class="sec-count">'+totalN+' total</span></div>'
+        +'<table><thead><tr>'
+        +'<th style="width:22px">#</th>'
+        +'<th>Motivo / Causa da Falha</th>'
+        +'<th style="text-align:center;width:45px">Qtd</th>'
+        +'<th style="text-align:center;width:50px">% Total</th>'
+        +'<th style="min-width:110px">Proporção Visual</th>'
+        +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    })();
+    const _rispHTML=(()=>{
+      if(!_chartData.risp||!_chartData.risp.length) return '';
+      const rs=_chartData.risp.slice().sort((a,b)=>(b.ni+b.nm+b.np)-(a.ni+a.nm+a.np));
+      const gTot=rs.reduce((s,x)=>s+x.ni+x.nm+x.np,0)||1;
+      const mx=rs[0].ni+rs[0].nm+rs[0].np||1;
+      let rows='';
+      rs.forEach(x=>{
+        const tot=x.ni+x.nm+x.np;
+        const pct=Math.round(tot/gTot*100);
+        const iW=tot?Math.round(x.ni/tot*100):0;
+        const mW=tot?Math.round(x.nm/tot*100):0;
+        const pW=100-iW-mW;
+        const bars=(x.ni>0?'<div style="background:#ef4444;height:100%;width:'+iW+'%;min-width:3px"></div>':'')
+          +(x.nm>0?'<div style="background:#a78bfa;height:100%;width:'+mW+'%;min-width:3px"></div>':'')
+          +(x.np>0?'<div style="background:#fbbf24;height:100%;width:'+pW+'%;min-width:3px"></div>':'');
+        rows+='<tr>'
+          +'<td><span class="risp-s">'+x.r+'</span></td>'
+          +'<td style="text-align:center'+(x.ni>0?';color:#b91c1c;font-weight:700':'')+'">'+( x.ni||'—')+'</td>'
+          +'<td style="text-align:center'+(x.nm>0?';color:#7c3aed;font-weight:700':'')+'">'+( x.nm||'—')+'</td>'
+          +'<td style="text-align:center'+(x.np>0?';color:#d97706;font-weight:700':'')+'">'+( x.np||'—')+'</td>'
+          +'<td style="text-align:center;font-weight:700;font-size:11px;color:#0f2044">'+tot+'</td>'
+          +'<td style="text-align:center;color:#6b7280">'+pct+'%</td>'
+          +'<td style="padding:5px 7px"><div style="background:#e5e7eb;border-radius:3px;height:10px;overflow:hidden;display:flex">'+bars+'</div></td>'
+          +'</tr>';
+      });
+      return '<div class="section">'
+        +'<div class="section-title">Resumo — Problemas Ativos por RISP <span class="sec-count">'+_chartData.risp.length+' RISP(s)</span></div>'
+        +'<table><thead><tr>'
+        +'<th>RISP</th>'
+        +'<th style="text-align:center">Inoperante</th>'
+        +'<th style="text-align:center">Modo Local</th>'
+        +'<th style="text-align:center">Parcial</th>'
+        +'<th style="text-align:center;width:55px">Total</th>'
+        +'<th style="text-align:center;width:50px">%</th>'
+        +'<th style="min-width:110px">Distribuição</th>'
+        +'</tr></thead><tbody>'+rows+'</tbody></table></div>';
+    })();
     w.document.write(`<!DOCTYPE html><html lang="pt-BR"><head><meta charset="UTF-8"><title>${tipoLabel} — NEBULA — SESP/MT — ${new Date().toLocaleDateString('pt-BR')}</title>
   <style>
     @page{size:A4;margin:2.2cm 1.8cm 2cm}
@@ -2187,56 +2253,9 @@ function gerarPDF(){
 
   <div id="grad-visual" style="margin-bottom:16px"></div>
 
-  ${Object.keys(_tfMap).length>0?`
-  <div class="section">
-    <div class="section-title">Resumo — Ocorrências por Motivo de Falha <span class="sec-count">${Object.values(_tfMap).reduce((a,b)=>a+b,0)} total</span></div>
-    <table>
-      <thead><tr><th style="width:22px">#</th><th>Motivo / Causa da Falha</th><th style="text-align:center;width:45px">Qtd</th><th style="text-align:center;width:50px">% Total</th><th style="min-width:110px">Proporção Visual</th></tr></thead>
-      <tbody>${(()=>{
-        const ents=Object.entries(_tfMap).sort((a,b)=>b[1]-a[1]);
-        const tot=ents.reduce((s,[,v])=>s+v,0)||1;
-        const mx=ents[0]?ents[0][1]:1;
-        return ents.map(([m,c],i)=>`<tr>
-          <td style="color:#9ca3af;font-weight:700">${i+1}</td>
-          <td><strong>${m}</strong></td>
-          <td style="text-align:center;font-weight:700;color:#0f2044;font-size:11px">${c}</td>
-          <td style="text-align:center"><span style="color:#1a6fd4;font-weight:700;font-size:10px">${Math.round(c/tot*100)}%</span></td>
-          <td style="padding:5px 7px"><div style="background:#e5e7eb;border-radius:3px;height:10px;overflow:hidden"><div style="background:#1a6fd4;height:100%;width:${Math.round(c/mx*100)}%;border-radius:3px;min-width:4px"></div></div></td>
-        </tr>`).join('');
-      })()}</tbody>
-    </table>
-  </div>
-  `:''}
+  ${_motivosHTML}
 
-  ${_chartData.risp&&_chartData.risp.length>0?`
-  <div class="section">
-    <div class="section-title">Resumo — Problemas Ativos por RISP <span class="sec-count">${_chartData.risp.length} RISP(s) com ocorrências</span></div>
-    <table>
-      <thead><tr><th>RISP</th><th style="text-align:center">Inoperante</th><th style="text-align:center">Modo Local</th><th style="text-align:center">Parcial</th><th style="text-align:center;width:55px">Total</th><th style="text-align:center;width:50px">%</th><th style="min-width:110px">Distribuição</th></tr></thead>
-      <tbody>${(()=>{
-        const rows=_chartData.risp.slice().sort((a,b)=>(b.ni+b.nm+b.np)-(a.ni+a.nm+a.np));
-        const grandTotal=rows.reduce((s,x)=>s+x.ni+x.nm+x.np,0)||1;
-        const mx=rows[0]?rows[0].ni+rows[0].nm+rows[0].np:1;
-        return rows.map(x=>{
-          const tot=x.ni+x.nm+x.np;
-          const pct=Math.round(tot/grandTotal*100);
-          const inopW=Math.round(x.ni/tot*100)||0;
-          const mlW=Math.round(x.nm/tot*100)||0;
-          const parcW=100-inopW-mlW;
-          return `<tr>
-            <td><span class="risp-s">${x.r}</span></td>
-            <td style="text-align:center${x.ni>0?';color:#b91c1c;font-weight:700':''}">${x.ni||'—'}</td>
-            <td style="text-align:center${x.nm>0?';color:#7c3aed;font-weight:700':''}">${x.nm||'—'}</td>
-            <td style="text-align:center${x.np>0?';color:#d97706;font-weight:700':''}">${x.np||'—'}</td>
-            <td style="text-align:center;font-weight:700;font-size:11px;color:#0f2044">${tot}</td>
-            <td style="text-align:center;color:#6b7280">${pct}%</td>
-            <td style="padding:5px 7px"><div style="background:#e5e7eb;border-radius:3px;height:10px;overflow:hidden;display:flex">${x.ni>0?`<div style="background:#ef4444;height:100%;width:${inopW}%;min-width:3px"></div>`:''  }${x.nm>0?`<div style="background:#a78bfa;height:100%;width:${mlW}%;min-width:3px"></div>`:''  }${x.np>0?`<div style="background:#fbbf24;height:100%;width:${parcW}%;min-width:3px"></div>`:''  }</div></td>
-          </tr>`;
-        }).join('');
-      })()}</tbody>
-    </table>
-  </div>
-  `:''}
+  ${_rispHTML}
 
   ${(relTipo==='geral'||relTipo==='problemas')&&inop.length?`
   <div class="section">
